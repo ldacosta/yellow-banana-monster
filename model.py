@@ -3,10 +3,11 @@ import torch.nn as nn
 import numpy as np
 import torch.nn.functional as F
 
+
 class QNetwork(nn.Module):
     """Actor Model: consitutes a Policy, as it gets state and returns the optimal action."""
 
-    def __init__(self, state_size, action_size, seed=0):
+    def __init__(self, name, state_size, action_size, seed=0):
         """
         Defines model.
         :param state_size: number of states
@@ -14,15 +15,16 @@ class QNetwork(nn.Module):
         :param seed: seed for random initialization
         """
         super().__init__()
+        self.name = name
         self.seed = torch.manual_seed(seed)
         self.state_size = state_size
         self.action_size = action_size
         self.hidden_sizes = [int(round(state_size * 1.5)), int(round(action_size * 1.5))]
-        print("Creating a network with %d input neurons, %d output, and hidden of %d and %d" %
-              (self.state_size, self.action_size, self.hidden_sizes[0], self.hidden_sizes[1]))
+        print("Creating network '%s' with %d input neurons, %d output, and hidden of %d and %d" %
+              (self.name, self.state_size, self.action_size, self.hidden_sizes[0], self.hidden_sizes[1]))
         self.fc1 = nn.Linear(self.state_size, self.hidden_sizes[0])
         self.fc2 = nn.Linear(self.hidden_sizes[0], self.hidden_sizes[1])
-        self.output = nn.Linear(self.hidden_sizes[0], self.action_size)
+        self.output = nn.Linear(self.hidden_sizes[1], self.action_size)
 
     def forward_np(self, numpy_state):
         """
@@ -40,6 +42,10 @@ class QNetwork(nn.Module):
         """
         if not isinstance(numpy_state, np.ndarray):
             raise TypeError('State has to be a numpy array in this function')
+        if len(numpy_state) != self.state_size:
+            raise ValueError(
+                'This network is expecting an input state size %d, but this function is called with structure size %d'
+                % (self.state_size, len(numpy_state)))
         state = torch.from_numpy(numpy_state)  # state is a tensor
         state = state.float()  # numpy has a type np.float64. I want a direct float
         state = state.unsqueeze(0)
@@ -66,7 +72,7 @@ class QNetwork(nn.Module):
         :return:
         """
         # compute actual rewards obtained
-        rewards_obtained = self.forward(states_seen).gather(1, actions_taken)
+        rewards_obtained = self.forward(states_seen).gather(1, actions_taken.long())
         loss = F.mse_loss(input=rewards_obtained, target=targets) # compute the loss
         # take an optimization step
         optimizer.zero_grad()

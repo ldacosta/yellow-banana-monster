@@ -27,20 +27,29 @@ class Agent():
         self.seed = random.seed(seed)
         self.device = device
         self.update_every_steps = update_every_steps
-        self.qnetwork_local = QNetwork(state_size=self.state_size, action_size=self.action_size, seed=seed).to(self.device)
-        self.qnetwork_target = QNetwork(state_size=self.state_size, action_size=self.action_size, seed=seed).to(self.device)
+        self.qnetwork_local = QNetwork(name="local", state_size=self.state_size, action_size=self.action_size, seed=seed).to(self.device)
+        self.qnetwork_target = QNetwork(name="target", state_size=self.state_size, action_size=self.action_size, seed=seed).to(self.device)
         self.optimizer = optim.Adam(params=self.qnetwork_local.parameters(), lr=lr)
-        self.memory = ReplayBuffer(buffer_size=1e3, batch_size=batch_size)
+        self.memory = ReplayBuffer(buffer_size=1000, batch_size=batch_size)
         # let's keep track of the steps so that we can run the algorithms properly
         self.t_step = 0
 
     def step(self, state, action, reward, next_state, done):
-        """ One full interaction with the environment. """
+        """ One full interaction with the environment.
+        :param state:
+        :param action:
+        :param reward:
+        :param next_state:
+        :param done:
+        :return: True if we ran the learning step; False otherwise.
+        """
         self.memory.add(state, action, reward, next_state, done)
         self.t_step += 1
         if self.t_step % self.update_every_steps == 0:
             if len(self.memory) >= self.memory.batch_size:
                 self.learn(self.memory.sample())
+                return True
+        return False
 
     def learn(self, experiences, gamma=0.9, tau=1e-3):
         """
@@ -52,7 +61,7 @@ class Agent():
         # unpack:
         states, actions, rewards, next_states, dones = experiences
         # let's see what is the expected returns of next_states, and take the max of them:
-        expected_next = self.qnetwork_local(states).detach()  # I don't want toe computation graph to keep track of this
+        expected_next = self.qnetwork_local(states).detach()  # I don't want the computation graph to keep track of this
         expected_next = expected_next.max(1)[0]  # max values
         expected_next = expected_next.unsqueeze(1)  # values in columns
         targets = rewards + (gamma * expected_next * dones)  # in case there is NO 'next'
@@ -67,16 +76,22 @@ class Agent():
     def act(self, state, eps=0.1):
         """
 
-        :param state: state(s) to be evaluated. Can be in numpy or as tensors.
+        :param state: state(s) to be evaluated. Can be as a list, as a numpy array or as tensor.
         :param eps: value in [0,1] for epsilon-greedy choice.
         :return: a numpy array with the actions to take
         """
         # epsilon-greedy choice:
         if random.random() < eps:
             return random.choice(range(self.action_size)) # or np.arange? Does it make a difference?
+        # if sate is a list, transform it into a numpy array:
+        if isinstance(state, list):
+            state = np.asarray(state, dtype=np.float32)
         # if state is a numpy array, transform it into a tensor:
         if isinstance(state, np.ndarray):
             state = torch.from_numpy(state).float().unsqueeze(0).to(self.device)
+        #
+        if not isinstance(state, torch.FloatTensor):
+            raise TypeError('State has to be either a list, a numpy array, or a tensor in this function')
         # let's put the nn into eval mode:
         self.qnetwork_local.eval()
         with torch.no_grad():
