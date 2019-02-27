@@ -1,6 +1,7 @@
 # tmp for emacs
 **/*~
 
+**/.DS_Store
 # Intellij,S configuration
 .idea/
 
