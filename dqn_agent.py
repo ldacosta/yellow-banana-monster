@@ -88,10 +88,12 @@ class Agent():
             state = np.asarray(state, dtype=np.float32)
         # if state is a numpy array, transform it into a tensor:
         if isinstance(state, np.ndarray):
-            state = torch.from_numpy(state).float().unsqueeze(0).to(self.device)
-        #
+            state = torch.from_numpy(state).float().unsqueeze(0)
+        # we need to work with a Tensor
         if not isinstance(state, torch.FloatTensor):
             raise TypeError('State has to be either a list, a numpy array, or a tensor in this function')
+        # let's send this data to the proper device
+        state = state.to(self.device)
         # let's put the nn into eval mode:
         self.qnetwork_local.eval()
         with torch.no_grad():
