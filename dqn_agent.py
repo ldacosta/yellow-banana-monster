@@ -34,6 +34,15 @@ class Agent():
         # let's keep track of the steps so that we can run the algorithms properly
         self.t_step = 0
 
+    def set_models_from(self, torch_file_name):
+        """
+        Loads weights for networks.
+        :param torch_file_name:
+        :return:
+        """
+        self.qnetwork_local.load_state_dict(torch.load(torch_file_name))
+        self.qnetwork_target.load_state_dict(torch.load(torch_file_name))
+
     def step(self, state, action, reward, next_state, done):
         """ One full interaction with the environment.
         :param state:
