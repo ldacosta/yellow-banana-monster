@@ -19,7 +19,8 @@ class QNetwork(nn.Module):
         self.seed = torch.manual_seed(seed)
         self.state_size = state_size
         self.action_size = action_size
-        self.hidden_sizes = [int(round(state_size * 1.5)), int(round(action_size * 1.5))]
+        self.hidden_sizes = [int(round(state_size * 3)), int(round(action_size * 3))]
+        # self.hidden_sizes = [int(round(state_size * 1.5)), int(round(action_size * 1.5))]
         print("Creating network '%s' with %d input neurons, %d output, and hidden of %d and %d" %
               (self.name, self.state_size, self.action_size, self.hidden_sizes[0], self.hidden_sizes[1]))
         self.fc1 = nn.Linear(self.state_size, self.hidden_sizes[0])
