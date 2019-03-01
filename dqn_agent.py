@@ -70,7 +70,7 @@ class Agent():
         # unpack:
         states, actions, rewards, next_states, dones = experiences
         # let's see what is the expected returns of next_states, and take the max of them:
-        expected_next = self.qnetwork_local(states).detach()  # I don't want the computation graph to keep track of this
+        expected_next = self.qnetwork_local(next_states).detach()  # I don't want the computation graph to keep track of this
         expected_next = expected_next.max(1)[0]  # max values
         expected_next = expected_next.unsqueeze(1)  # values in columns
         targets = rewards + (gamma * expected_next * dones)  # in case there is NO 'next'
