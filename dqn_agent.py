@@ -14,6 +14,7 @@ class Agent():
                  state_size, action_size,
                  lr=1e-3, batch_size=64,
                  update_every_steps=10,
+                 memory_size=int(1e5),
                  seed=0, device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu")):
         """
         Initialization
@@ -31,7 +32,7 @@ class Agent():
         self.qnetwork_local = QNetwork(name="local", state_size=self.state_size, action_size=self.action_size, seed=seed).to(self.device)
         self.qnetwork_target = QNetwork(name="target", state_size=self.state_size, action_size=self.action_size, seed=seed).to(self.device)
         self.optimizer = optim.Adam(params=self.qnetwork_local.parameters(), lr=lr)
-        self.memory = ReplayBuffer(buffer_size=1000, batch_size=batch_size)
+        self.memory = ReplayBuffer(buffer_size=memory_size, batch_size=batch_size)
         # let's keep track of the steps so that we can run the algorithms properly
         self.t_step = 0
 
