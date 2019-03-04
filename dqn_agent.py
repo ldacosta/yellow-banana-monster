@@ -54,7 +54,7 @@ class Agent():
         :param done:
         :return: True if we ran the learning step; False otherwise.
         """
-        self.memory.add(state, action, reward, next_state, done)
+        self.memory.add(state=state, action=action, reward=reward, next_state=next_state, done=done)
         self.t_step += 1
         if self.t_step % self.update_every_steps == 0:
             if len(self.memory) >= self.memory.batch_size:
@@ -75,7 +75,7 @@ class Agent():
         expected_next = self.qnetwork_target(next_states).detach()  # I don't want the computation graph to keep track of this
         expected_next = expected_next.max(1)[0]  # max values
         expected_next = expected_next.unsqueeze(1)  # values in columns
-        targets = rewards + (gamma * expected_next * dones)  # in case there is NO 'next'
+        targets = rewards + (gamma * expected_next * (1 - dones))  # in case there is NO 'next'
         # ok, now optimize my network:
         self.qnetwork_local.do_optimization_step(self.optimizer, states_seen=states, actions_taken=actions, targets=targets)
 
