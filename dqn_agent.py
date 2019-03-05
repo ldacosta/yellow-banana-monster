@@ -12,6 +12,7 @@ class Agent():
 
     def __init__(self,
                  state_size, action_size,
+                 is_double=False,
                  lr=1e-3, batch_size=64,
                  update_every_steps=10,
                  memory_size=int(1e5),
@@ -20,12 +21,14 @@ class Agent():
         Initialization
         :param state_size: how many states in world.
         :param action_size: how many agents can the agent choose from.
+        :param is_double: if True, implements Double DQN (https://arxiv.org/pdf/1509.06461.pdf)
         :param seed: to reproduce results.
         :param device: do I have a GPU, or not?
         """
         self.version = "v_debug: use of 'target' when calculating targets"
         self.state_size = state_size
         self.action_size = action_size
+        self.is_double = is_double
         self.seed = random.seed(seed)
         self.device = device
         self.update_every_steps = update_every_steps
@@ -72,8 +75,21 @@ class Agent():
         # unpack:
         states, actions, rewards, next_states, dones = experiences
         # let's see what is the expected returns of next_states, and take the max of them:
-        expected_next = self.qnetwork_target(next_states).detach()  # I don't want the computation graph to keep track of this
-        expected_next = expected_next.max(1)[0]  # max values
+        if self.is_double:
+            expected_next_in_local = self.qnetwork_local(next_states).detach()  # I don't want the computation graph to keep track of this
+            # print(expected_next_in_   local)
+            actions_selected = torch.argmax(expected_next_in_local, dim=1).unsqueeze(1)
+            # print(actions_selected)
+            expected_next_in_target = self.qnetwork_target(next_states).detach()  # I don't want the computation graph to keep track of this
+            # print(expected_next_in_target)
+            expected_next = expected_next_in_target.gather(1, actions_selected.long())
+            # print("expected_next", expected_next)
+            expected_next = torch.transpose(expected_next, 0, 1).data[0]
+            # print("expected_next.transposed()", expected_next)
+        else:
+            expected_next = self.qnetwork_target(next_states).detach()  # I don't want the computation graph to keep track of this
+            expected_next = expected_next.max(1)[0]  # max values
+        # print(expected_next)
         expected_next = expected_next.unsqueeze(1)  # values in columns
         targets = rewards + (gamma * expected_next * (1 - dones))  # in case there is NO 'next'
         # ok, now optimize my network:
