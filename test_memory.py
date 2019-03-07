@@ -1,12 +1,13 @@
 import unittest
-from memory import ReplayBuffer
-from random import sample, choice, randint
+from memory import ReplayBuffer, WeightedReplayBuffer
+from random import sample, choice, randint, random
 
 
 class TestMemory(unittest.TestCase):
 
     def setUp(self):
         self.rb = ReplayBuffer(buffer_size=1000, batch_size=64)
+        self.wrb = WeightedReplayBuffer(buffer_size=1000, batch_size=64)
 
     def test_len(self):
         """ Simple test for length."""
@@ -22,6 +23,7 @@ class TestMemory(unittest.TestCase):
     def test_sample(self):
         """ Tests sampling from memory"""
         # let's fill it up first
+        # ReplayBuffer
         for reps in range(10):
             self.rb.empty()
             self.assertEqual(len(self.rb), 0)
@@ -34,6 +36,19 @@ class TestMemory(unittest.TestCase):
             else:
                 (states, actions, rewards, next_states, dones) = self.rb.sample()
                 self.assertTrue(len(states) == len(actions) == len(rewards) == len(next_states) == len(dones) == self.rb.batch_size)
+        # WeightedReplayBuffer
+        for reps in range(10):
+            self.wrb.empty()
+            self.assertEqual(len(self.wrb), 0)
+            number_of_adds = choice(range(1, 2 * self.wrb.batch_size, 1))
+            for i in range(number_of_adds):
+                self.wrb.add(state=randint(1, 100), action=randint(1, 100), reward=randint(0, 1), next_state=randint(1, 100), done=randint(0, 1), weight=random())
+            if number_of_adds < self.rb.batch_size:
+                with self.assertRaises(ValueError):
+                    (states, actions, rewards, next_states, dones) = self.wrb.sample()
+            else:
+                (states, actions, rewards, next_states, dones) = self.wrb.sample()
+                self.assertTrue(len(states) == len(actions) == len(rewards) == len(next_states) == len(dones) == self.wrb.batch_size)
 
 
 

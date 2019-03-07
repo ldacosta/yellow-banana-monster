@@ -4,6 +4,7 @@ from random import random
 import numpy as np
 from torch import nn
 from model import QNetwork
+from memory import ReplayBuffer, WeightedReplayBuffer
 
 
 class TestDQNAgent(unittest.TestCase):
@@ -22,7 +23,7 @@ class TestDQNAgent(unittest.TestCase):
         )
         self.main_model = QNetwork(name="my_network", fc=fc)
         self.target_model = QNetwork(name="my_network", fc=fc)
-        self.agent = DQNAgent(main_model=self.main_model, target_network=self.target_model)
+        self.agent = DQNAgent(main_model=self.main_model, target_network=self.target_model, memory=WeightedReplayBuffer(buffer_size=12, batch_size=3))
         self.eps_greediness = 0.01
 
     def test_allruns(self):
