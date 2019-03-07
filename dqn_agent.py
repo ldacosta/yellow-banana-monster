@@ -1,3 +1,5 @@
+from abc import ABC, abstractmethod
+
 import numpy as np
 import torch
 import random
@@ -7,12 +9,11 @@ from model import QNetwork
 from memory import ReplayBuffer
 
 
-class Agent():
+class Agent(ABC):
     """General agent that interacts with and learns from the environment."""
 
     def __init__(self,
                  main_model: QNetwork, target_network: QNetwork,
-                 is_double=False,
                  lr=1e-3, batch_size=64,
                  update_every_steps=10,
                  memory_size=int(1e5),
@@ -32,7 +33,6 @@ class Agent():
         self.version = "v_debug: use of 'target' when calculating targets"
         self.state_size = main_model.state_size
         self.action_size = main_model.action_size
-        self.is_double = is_double
         self.seed = random.seed(seed)
         self.device = device
         self.update_every_steps = update_every_steps
@@ -69,6 +69,7 @@ class Agent():
                 return True
         return False
 
+    @abstractmethod
     def learn(self, experiences, gamma=0.9, tau=1e-3):
         """
 
@@ -76,33 +77,7 @@ class Agent():
         :param gamma:
         :return:
         """
-        # unpack:
-        states, actions, rewards, next_states, dones = experiences
-        # let's see what is the expected returns of next_states, and take the max of them:
-        if self.is_double:
-            expected_next_in_local = self.qnetwork_local(next_states).detach()  # I don't want the computation graph to keep track of this
-            # print(expected_next_in_   local)
-            actions_selected = torch.argmax(expected_next_in_local, dim=1).unsqueeze(1)
-            # print(actions_selected)
-            expected_next_in_target = self.qnetwork_target(next_states).detach()  # I don't want the computation graph to keep track of this
-            # print(expected_next_in_target)
-            expected_next = expected_next_in_target.gather(1, actions_selected.long())
-            # print("expected_next", expected_next)
-            expected_next = torch.transpose(expected_next, 0, 1).data[0]
-            # print("expected_next.transposed()", expected_next)
-        else:
-            expected_next = self.qnetwork_target(next_states).detach()  # I don't want the computation graph to keep track of this
-            expected_next = expected_next.max(1)[0]  # max values
-        # print(expected_next)
-        expected_next = expected_next.unsqueeze(1)  # values in columns
-        targets = rewards + (gamma * expected_next * (1 - dones))  # in case there is NO 'next'
-        # ok, now optimize my network:
-        self.qnetwork_local.do_optimization_step(self.optimizer, states_seen=states, actions_taken=actions, targets=targets)
-
-        # let's soft-copy the values onto the target network:
-        # target_weights = tau * local_weights = (1 - tau)*target_weights
-        for target_param, local_param in zip(self.qnetwork_target.parameters(), self.qnetwork_local.parameters()):
-            target_param.data.copy_(tau * local_param.data + (1.0 - tau) * target_param.data)
+        pass
 
     def act(self, state, eps=0.1):
         """
@@ -133,3 +108,100 @@ class Agent():
         self.qnetwork_local.train()
         # and now let's take the max of this, and return it as a numpy array:
         return np.argmax(action_values.cpu().data.numpy())
+
+class DQNAgent(Agent):
+    """General agent that interacts with and learns from the environment."""
+
+    def __init__(self,
+                 main_model: QNetwork, target_network: QNetwork,
+                 is_double=False,
+                 lr=1e-3, batch_size=64,
+                 update_every_steps=10,
+                 memory_size=int(1e5),
+                 seed=0, device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu")):
+        Agent.__init__(
+            self,
+            main_model=main_model,
+            target_network=target_network,
+            lr=lr,
+            batch_size=batch_size,
+            update_every_steps=update_every_steps,
+            memory_size=memory_size,
+            seed=seed,
+            device=device)
+
+    def learn(self, experiences, gamma=0.9, tau=1e-3):
+        """
+
+        :param experiences:
+        :param gamma:
+        :return:
+        """
+        # unpack:
+        states, actions, rewards, next_states, dones = experiences
+        # let's see what is the expected returns of next_states, and take the max of them:
+        expected_next = self.qnetwork_target(next_states).detach()  # I don't want the computation graph to keep track of this
+        expected_next = expected_next.max(1)[0]  # max values
+        # print(expected_next)
+        expected_next = expected_next.unsqueeze(1)  # values in columns
+        targets = rewards + (gamma * expected_next * (1 - dones))  # in case there is NO 'next'
+        # ok, now optimize my network:
+        self.qnetwork_local.do_optimization_step(self.optimizer, states_seen=states, actions_taken=actions, targets=targets)
+
+        # let's soft-copy the values onto the target network:
+        # target_weights = tau * local_weights = (1 - tau)*target_weights
+        for target_param, local_param in zip(self.qnetwork_target.parameters(), self.qnetwork_local.parameters()):
+            target_param.data.copy_(tau * local_param.data + (1.0 - tau) * target_param.data)
+
+class DoubleDQNAgent(Agent):
+    """General agent that interacts with and learns from the environment."""
+
+    def __init__(self,
+                 main_model: QNetwork, target_network: QNetwork,
+                 is_double=False,
+                 lr=1e-3, batch_size=64,
+                 update_every_steps=10,
+                 memory_size=int(1e5),
+                 seed=0, device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu")):
+        Agent.__init__(
+            self,
+            main_model=main_model,
+            target_network=target_network,
+            lr=lr,
+            batch_size=batch_size,
+            update_every_steps=update_every_steps,
+            memory_size=memory_size,
+            seed=seed,
+            device=device)
+
+    def learn(self, experiences, gamma=0.9, tau=1e-3):
+        """
+
+        :param experiences:
+        :param gamma:
+        :return:
+        """
+        # unpack:
+        states, actions, rewards, next_states, dones = experiences
+        # let's see what is the expected returns of next_states, and take the max of them:
+        expected_next_in_local = self.qnetwork_local(next_states).detach()  # I don't want the computation graph to keep track of this
+        # print(expected_next_in_   local)
+        actions_selected = torch.argmax(expected_next_in_local, dim=1).unsqueeze(1)
+        # print(actions_selected)
+        expected_next_in_target = self.qnetwork_target(next_states).detach()  # I don't want the computation graph to keep track of this
+        # print(expected_next_in_target)
+        expected_next = expected_next_in_target.gather(1, actions_selected.long())
+        # print("expected_next", expected_next)
+        expected_next = torch.transpose(expected_next, 0, 1).data[0]
+        # print("expected_next.transposed()", expected_next)
+        # print(expected_next)
+        expected_next = expected_next.unsqueeze(1)  # values in columns
+        targets = rewards + (gamma * expected_next * (1 - dones))  # in case there is NO 'next'
+        # ok, now optimize my network:
+        self.qnetwork_local.do_optimization_step(self.optimizer, states_seen=states, actions_taken=actions, targets=targets)
+
+        # let's soft-copy the values onto the target network:
+        # target_weights = tau * local_weights = (1 - tau)*target_weights
+        for target_param, local_param in zip(self.qnetwork_target.parameters(), self.qnetwork_local.parameters()):
+            target_param.data.copy_(tau * local_param.data + (1.0 - tau) * target_param.data)
+
