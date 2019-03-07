@@ -6,7 +6,7 @@ import random
 from torch import optim
 
 from model import QNetwork
-from memory import ReplayBuffer
+from memory import RootReplayBuffer, ReplayBuffer, WeightedReplayBuffer
 
 
 class Agent(ABC):
@@ -14,9 +14,9 @@ class Agent(ABC):
 
     def __init__(self,
                  main_model: QNetwork, target_network: QNetwork,
-                 lr=1e-3, batch_size=64,
+                 lr=1e-3, gamma=0.9,
                  update_every_steps=10,
-                 memory_size=int(1e5),
+                 memory:RootReplayBuffer=ReplayBuffer(buffer_size=int(1e5), batch_size=64),
                  seed=0, device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu")):
         """
         Initialization
@@ -39,9 +39,10 @@ class Agent(ABC):
         self.qnetwork_local = main_model.to(self.device)
         self.qnetwork_target = target_network.to(self.device)
         self.optimizer = optim.Adam(params=self.qnetwork_local.parameters(), lr=lr)
-        self.memory = ReplayBuffer(buffer_size=memory_size, batch_size=batch_size)
+        self.memory = memory # ReplayBuffer(buffer_size=memory_size, batch_size=batch_size)
         # let's keep track of the steps so that we can run the algorithms properly
         self.t_step = 0
+        self.gamma = gamma
 
     def set_models_from(self, torch_file_name):
         """
@@ -61,7 +62,15 @@ class Agent(ABC):
         :param done:
         :return: True if we ran the learning step; False otherwise.
         """
-        self.memory.add(state=state, action=action, reward=reward, next_state=next_state, done=done)
+        if isinstance(self.memory, ReplayBuffer):
+            self.memory.add(state=state, action=action, reward=reward, next_state=next_state, done=done)
+        elif isinstance(self.memory, WeightedReplayBuffer):
+            max_now = np.max((self.qnetwork_local.forward_np(state)).cpu().data.numpy())
+            max_of_next = np.max((self.qnetwork_local.forward_np(next_state)).cpu().data.numpy())
+            weight = abs(reward + self.gamma * max_of_next * (1 - done) - max_now)
+            self.memory.add(state=state, action=action, reward=reward, next_state=next_state, done=done, weight=weight)
+        else:
+            raise TypeError("I don't know the type of my memory")
         self.t_step += 1
         if self.t_step % self.update_every_steps == 0:
             if len(self.memory) >= self.memory.batch_size:
@@ -70,7 +79,7 @@ class Agent(ABC):
         return False
 
     @abstractmethod
-    def learn(self, experiences, gamma=0.9, tau=1e-3):
+    def learn(self, experiences, tau=1e-3):
         """
 
         :param experiences:
@@ -114,23 +123,22 @@ class DQNAgent(Agent):
 
     def __init__(self,
                  main_model: QNetwork, target_network: QNetwork,
-                 is_double=False,
-                 lr=1e-3, batch_size=64,
+                 lr=1e-3, gamma = 0.9,
                  update_every_steps=10,
-                 memory_size=int(1e5),
+                 memory:RootReplayBuffer=ReplayBuffer(buffer_size=int(1e5), batch_size=64),
                  seed=0, device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu")):
         Agent.__init__(
             self,
             main_model=main_model,
             target_network=target_network,
             lr=lr,
-            batch_size=batch_size,
+            gamma=gamma,
             update_every_steps=update_every_steps,
-            memory_size=memory_size,
+            memory=memory,
             seed=seed,
             device=device)
 
-    def learn(self, experiences, gamma=0.9, tau=1e-3):
+    def learn(self, experiences, tau=1e-3):
         """
 
         :param experiences:
@@ -144,7 +152,7 @@ class DQNAgent(Agent):
         expected_next = expected_next.max(1)[0]  # max values
         # print(expected_next)
         expected_next = expected_next.unsqueeze(1)  # values in columns
-        targets = rewards + (gamma * expected_next * (1 - dones))  # in case there is NO 'next'
+        targets = rewards + (self.gamma * expected_next * (1 - dones))  # in case there is NO 'next'
         # ok, now optimize my network:
         self.qnetwork_local.do_optimization_step(self.optimizer, states_seen=states, actions_taken=actions, targets=targets)
 
@@ -153,28 +161,29 @@ class DQNAgent(Agent):
         for target_param, local_param in zip(self.qnetwork_target.parameters(), self.qnetwork_local.parameters()):
             target_param.data.copy_(tau * local_param.data + (1.0 - tau) * target_param.data)
 
+
 class DoubleDQNAgent(Agent):
     """General agent that interacts with and learns from the environment."""
 
     def __init__(self,
                  main_model: QNetwork, target_network: QNetwork,
-                 is_double=False,
-                 lr=1e-3, batch_size=64,
+                 lr=1e-3,
+                 gamma=0.9,
                  update_every_steps=10,
-                 memory_size=int(1e5),
+                 memory:RootReplayBuffer = ReplayBuffer(buffer_size = int(1e5), batch_size=64),
                  seed=0, device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu")):
         Agent.__init__(
             self,
             main_model=main_model,
             target_network=target_network,
             lr=lr,
-            batch_size=batch_size,
+            gamma=gamma,
             update_every_steps=update_every_steps,
-            memory_size=memory_size,
+            memory=memory,
             seed=seed,
             device=device)
 
-    def learn(self, experiences, gamma=0.9, tau=1e-3):
+    def learn(self, experiences, tau=1e-3):
         """
 
         :param experiences:
@@ -196,7 +205,7 @@ class DoubleDQNAgent(Agent):
         # print("expected_next.transposed()", expected_next)
         # print(expected_next)
         expected_next = expected_next.unsqueeze(1)  # values in columns
-        targets = rewards + (gamma * expected_next * (1 - dones))  # in case there is NO 'next'
+        targets = rewards + (self.gamma * expected_next * (1 - dones))  # in case there is NO 'next'
         # ok, now optimize my network:
         self.qnetwork_local.do_optimization_step(self.optimizer, states_seen=states, actions_taken=actions, targets=targets)
 

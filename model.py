@@ -46,6 +46,8 @@ class QNetwork(nn.Module):
         :param state_as_array:
         :return:
         """
+        if isinstance(numpy_state, list):
+            numpy_state = np.asarray(numpy_state)
         if not isinstance(numpy_state, np.ndarray):
             raise TypeError('State has to be a numpy array in this function')
         if len(numpy_state) != self.state_size:
