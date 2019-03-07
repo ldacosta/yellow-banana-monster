@@ -1,12 +1,12 @@
 import unittest
-from dqn_agent import DQNAgent
+from dqn_agent import DoubleDQNAgent
 from random import random
 import numpy as np
 from torch import nn
 from model import QNetwork
 
 
-class TestDQNAgent(unittest.TestCase):
+class TestDoubleDQNAgent(unittest.TestCase):
 
     def setUp(self):
         self.state_size = 3
@@ -22,7 +22,7 @@ class TestDQNAgent(unittest.TestCase):
         )
         self.main_model = QNetwork(name="my_network", fc=fc)
         self.target_model = QNetwork(name="my_network", fc=fc)
-        self.agent = DQNAgent(main_model=self.main_model, target_network=self.target_model)
+        self.agent = DoubleDQNAgent(main_model=self.main_model, target_network=self.target_model)
         self.eps_greediness = 0.01
 
     def test_allruns(self):

@@ -2,12 +2,24 @@ import unittest
 from model import QNetwork
 import numpy as np
 import random
+from torch import nn
 
 
 class TestModel(unittest.TestCase):
 
     def setUp(self):
-        self.model = QNetwork(name="my_network", state_size=3, action_size=5)
+        self.state_size = 3
+        self.action_size = 5
+        fc = nn.Sequential(
+            nn.Linear(self.state_size, 5),
+            nn.ReLU(),
+            nn.Linear(5, 7),
+            nn.ReLU(),
+            nn.Linear(7, 9),
+            nn.ReLU(),
+            nn.Linear(9, self.action_size)
+        )
+        self.model = QNetwork(name="my_network", fc=fc)
 
     def test_forward(self):
         """Minimally."""
