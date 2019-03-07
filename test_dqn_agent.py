@@ -1,13 +1,28 @@
 import unittest
 from dqn_agent import Agent
-from random import sample, choice, randint, random
+from random import random
 import numpy as np
+from torch import nn
+from model import QNetwork
 
 
 class TestAgent(unittest.TestCase):
 
     def setUp(self):
-        self.agent = Agent(state_size=5, action_size=3)
+        self.state_size = 3
+        self.action_size = 5
+        fc = nn.Sequential(
+            nn.Linear(self.state_size, 5),
+            nn.ReLU(),
+            nn.Linear(5, 7),
+            nn.ReLU(),
+            nn.Linear(7, 9),
+            nn.ReLU(),
+            nn.Linear(9, self.action_size)
+        )
+        self.main_model = QNetwork(name="my_network", fc=fc)
+        self.target_model = QNetwork(name="my_network", fc=fc)
+        self.agent = Agent(main_model=self.main_model, target_network=self.target_model)
         self.eps_greediness = 0.01
 
     def test_allruns(self):

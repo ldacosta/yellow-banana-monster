@@ -11,7 +11,7 @@ class Agent():
     """General agent that interacts with and learns from the environment."""
 
     def __init__(self,
-                 state_size, action_size,
+                 main_model: QNetwork, target_network: QNetwork,
                  is_double=False,
                  lr=1e-3, batch_size=64,
                  update_every_steps=10,
@@ -25,15 +25,19 @@ class Agent():
         :param seed: to reproduce results.
         :param device: do I have a GPU, or not?
         """
+        assert main_model.state_size == target_network.state_size, \
+            "Main model accepts a state size %d, but target accepts a state size %d" % (main_model.state_size, target_network.state_size)
+        assert main_model.action_size == target_network.action_size, \
+            "Main model generates %d possible actions, but target generates %d" % (main_model.action_size, target_network.action_size)
         self.version = "v_debug: use of 'target' when calculating targets"
-        self.state_size = state_size
-        self.action_size = action_size
+        self.state_size = main_model.state_size
+        self.action_size = main_model.action_size
         self.is_double = is_double
         self.seed = random.seed(seed)
         self.device = device
         self.update_every_steps = update_every_steps
-        self.qnetwork_local = QNetwork(name="local", state_size=self.state_size, action_size=self.action_size, seed=seed).to(self.device)
-        self.qnetwork_target = QNetwork(name="target", state_size=self.state_size, action_size=self.action_size, seed=seed).to(self.device)
+        self.qnetwork_local = main_model.to(self.device)
+        self.qnetwork_target = target_network.to(self.device)
         self.optimizer = optim.Adam(params=self.qnetwork_local.parameters(), lr=lr)
         self.memory = ReplayBuffer(buffer_size=memory_size, batch_size=batch_size)
         # let's keep track of the steps so that we can run the algorithms properly
