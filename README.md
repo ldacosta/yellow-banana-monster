@@ -1,25 +1,11 @@
-# yellow-banana-monster
-Chase the yellow bananas on an Unity environment
+# Deep Q-Learning
+
 
 
 ## Description
 
-Training of an agent to navigate (and collect bananas!) in a large, square world. 
+All Deep Q Learning
 
-A reward of +1 is provided for collecting a yellow banana, and a reward of -1 is provided for collecting a blue banana. Thus, the goal is to collect as many yellow bananas as possible while avoiding blue bananas.
-
-The state space has 37 dimensions and contains the agent's velocity, along with ray-based perception of objects around the agent's forward direction. Given this information, the agent has to learn how to best select actions. Four discrete actions are available, corresponding to:
-
-1. move forward.
-2. move backward.
-3. turn left.
-4. turn right.
-
-The task is episodic, and in order to solve the environment an agent must get an average score of +13 over 100 consecutive episodes.
-
-### Note
-
-The project environment is similar to, but not identical to the Banana Collector environment on the [Unity ML-Agents GitHub page](https://github.com/Unity-Technologies/ml-agents/blob/master/docs/Learning-Environment-Examples.md#banana-collector).
 
 ## Dependencies
 
