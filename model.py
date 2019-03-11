@@ -32,7 +32,7 @@ class QNetwork(nn.Module):
         self.state_size = self.fc[0].in_features
         self.action_size = self.fc[-1].out_features
 
-    def forward_np(self, numpy_state):
+    def forward_np(self, numpy_state, device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu")):
         """
 
         So if you had a numpy vector that you'd like to pass to this function
@@ -57,6 +57,12 @@ class QNetwork(nn.Module):
         state = torch.from_numpy(numpy_state)  # state is a tensor
         state = state.float()  # numpy has a type np.float64. I want a direct float
         state = state.unsqueeze(0)
+        state = state.to(device)
+        # print(type(state))
+        # if torch.cuda.is_available():
+        #    state = state.cuda()
+            # state = torch.cuda.FloatTensor(state)
+        # print(type(state))
         return self.forward(state)
 
     def forward(self, state):
