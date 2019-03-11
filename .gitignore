@@ -1,3 +1,6 @@
+# checkpoints of application
+**/checkpoint.pth
+
 # tmp for emacs
 **/*~
 
