@@ -37,3 +37,9 @@ To set up your python environment to run the code in this repository, follow the
 	conda create --name drlnd python=3.6 
 	activate my_env
 	```
+
+## How to Run it
+
+If you'd like to explore this solution open jupyter's notebook
+```jupyter notebook```
+from the root of this repository, open the notebook called `Navigation.ipynb` and follow ths instructions on it.
